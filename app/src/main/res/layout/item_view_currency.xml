@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+
+<layout xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:card_view="http://schemas.android.com/tools">
+    <data>
+        <variable
+            name="viewmodel"
+            type="com.example.user.myapplication.viewmodel.CurrencyItemViewmodel" />
+    </data>
+
+
+    <LinearLayout
+        android:id="@+id/linearLayoutWrapper"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:onClick="@{viewmodel::onClick}"
+        >
+
+        <com.example.user.myapplication.view.CircularImageView
+            android:id="@+id/posterImageView"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:scaleType="centerCrop"
+            android:layout_gravity="center"
+            android:src="@{viewmodel.posterImage}"
+            android:layout_margin="@dimen/margin8"
+            android:layout_weight="0.5"
+            android:adjustViewBounds="true"
+            />
+
+        <LinearLayout
+                android:id="@+id/linearLayout"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:layout_weight="1"
+                >
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="left|bottom"
+                    android:maxLines="1"
+                    android:text="@{viewmodel.mCurrencyType}"
+                    android:textSize="@dimen/currencyNameTextSize"
+                    android:typeface="sans"
+                    android:textColor="@android:color/black"
+                    android:layout_weight="1"
+                    />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:text="@{viewmodel.mCurrencyName}"
+                    android:gravity="left|top"
+                    android:maxLines="1"
+                    android:textSize="@dimen/currencyFullNameTextSize"
+                    android:layout_weight="1"
+                    />
+
+            </LinearLayout>
+
+            <EditText
+                android:id="@+id/editText"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:gravity="right|center_vertical"
+                android:maxLines="1"
+                android:text="@{viewmodel.mCurrencyValue}"
+                android:textSize="@dimen/currencyValueTextSize"
+                android:typeface="sans"
+                android:layout_weight="1"
+                android:textColor="@android:color/black"
+                android:background="@null"
+                android:layout_margin="@dimen/margin8"
+                android:inputType="numberDecimal"
+                app:textChangedListener="@{viewmodel.textWatcher}"
+                app:position="@{viewmodel.getModel.position}"
+                />
+
+        </LinearLayout>
+
+    </layout>
