@@ -37,15 +37,13 @@ public class RecycleViewAdapter extends RecyclerView.Adapter<CurrenciesViewHolde
     public void onBindViewHolder(CurrenciesViewHolder holder, final int position) {
         holder.itemView.setAlpha(mPrevAlpha);
 
-
         //Update Rate model position
         Rate rate = mRateList.get(position);
         rate.setPosition(position);
 
-        CurrencyItemViewmodel listItemViewmodel = new CurrencyItemViewmodel();
-
         //Set the viewmodel by sending the updated model
-        listItemViewmodel.setModel(mRateList.get(position), holder.getContext());
+        CurrencyItemViewmodel listItemViewmodel =
+                new CurrencyItemViewmodel(mRateList.get(position), holder.getContext().getResources());
 
         holder.bindingView.setViewmodel(listItemViewmodel);
 

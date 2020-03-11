@@ -107,7 +107,7 @@ public class CurrenciesActivity extends AppCompatActivity implements RecycleView
     @Override
     protected void onResume() {
         //Reconnect to API
-        mViewmodel.getCurrenciesFromApi();
+        mViewmodel.loadViewmodelDisposables();
         super.onResume();
     }
 }

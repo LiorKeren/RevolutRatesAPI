@@ -6,7 +6,7 @@ import com.example.user.myapplication.App;
 import com.example.user.myapplication.injection.DataApi;
 import com.example.user.myapplication.injection.annotations.ApplicationContext;
 import com.example.user.myapplication.injection.module.ApplicationModule;
-import com.example.user.myapplication.rx.RxDataPass;
+import com.example.user.myapplication.injection.RxDataPass;
 
 import javax.inject.Singleton;
 

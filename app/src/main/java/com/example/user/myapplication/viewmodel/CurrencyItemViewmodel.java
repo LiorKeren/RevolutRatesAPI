@@ -1,7 +1,7 @@
 package com.example.user.myapplication.viewmodel;
 
 
-import android.content.Context;
+import android.content.res.Resources;
 import android.graphics.drawable.Drawable;
 import android.icu.util.Currency;
 import android.os.Build;
@@ -9,12 +9,21 @@ import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.View;
 import android.widget.EditText;
+
+import com.example.user.myapplication.App;
+import com.example.user.myapplication.injection.component.DaggerViewmodelComponent;
+import com.example.user.myapplication.injection.component.ViewmodelComponent;
 import com.example.user.myapplication.model.Rate;
 import com.example.user.myapplication.picasso.BindableFieldTarget;
 import com.example.user.myapplication.R;
 import com.example.user.myapplication.helpers.Const;
-import com.example.user.myapplication.rx.RxDataPass;
+import com.example.user.myapplication.injection.RxDataPass;
 import com.squareup.picasso.Picasso;
+
+import java.math.BigDecimal;
+
+import javax.inject.Inject;
+
 import androidx.databinding.BindingAdapter;
 import androidx.databinding.ObservableField;
 import androidx.lifecycle.ViewModel;
@@ -25,8 +34,11 @@ public class CurrencyItemViewmodel extends ViewModel {
     //Global variables for further use
     private Currency mCurrency;
     private BindableFieldTarget bindableFieldTarget;
-    private Context mContext;
 
+    private ViewmodelComponent mViewmodelComponent;
+
+
+    @Inject RxDataPass rxDataPass;
 
     public ObservableField<Drawable> posterImage = new ObservableField<>();
     public ObservableField<String> mCurrencyName = new ObservableField<>();
@@ -34,16 +46,20 @@ public class CurrencyItemViewmodel extends ViewModel {
     public ObservableField<String> mCurrencyValue = new ObservableField<>();
 
 
+    public CurrencyItemViewmodel(Rate model, Resources resources) {
+        getmViewmodelComponent().inject(this);
+        setModel(model, resources);
+    }
+
     /**
      * Set viewmodel data by Rate mModel
      *
-     * @param context The context of ViewHolder for setting Picasso image view from Flags.IO API
+     * @param resources The context Resources of ViewHolder for setting Picasso image view from Flags.IO API
      * @param model The Rate mModel for setting viewmodel data
      * */
-    public void setModel(Rate model, Context context) {
+    private void setModel(Rate model, Resources resources) {
         mTextWatcher = getTextWatcherIns();
         mModel = model;
-        mContext = context;
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             mCurrency = Currency.getInstance(mModel.getName());
@@ -53,12 +69,12 @@ public class CurrencyItemViewmodel extends ViewModel {
         }
 
         // Picasso keeps a weak reference to the target so it needs to be stored in a field
-        bindableFieldTarget = new BindableFieldTarget(posterImage, mContext.getResources());
+        bindableFieldTarget = new BindableFieldTarget(posterImage, resources);
 
         mCurrencyType.set(mModel.getName());
 
         // If amount is round don't add the .0 value
-        if (Float.valueOf(model.getTotalAmount().intValue()).equals(model.getTotalAmount())){
+        if (model.getTotalAmount().stripTrailingZeros().scale() <= 0){
             mCurrencyValue.set(String.valueOf(mModel.getTotalAmount().intValue()));
         }else {
             mCurrencyValue.set(mModel.getTotalAmount().toString());
@@ -82,7 +98,7 @@ public class CurrencyItemViewmodel extends ViewModel {
     * @param view Not in use
     * */
     public void onClick(View view) {
-        RxDataPass.getListItemClickSubject().onNext(mModel.getPosition());
+        rxDataPass.getListItemClickSubject().onNext(mModel.getPosition());
     }
 
 
@@ -104,11 +120,14 @@ public class CurrencyItemViewmodel extends ViewModel {
 
                 //Check if the text that the user changed is in first position inside list view.
                 //Check if the value is different from the value we got inside the Rate model.
-                if (mModel.getPosition() == 0 && !mModel.getTotalAmount().equals(Float.valueOf(s.toString()))){
+                BigDecimal sBigDecimalValue = new BigDecimal(s.toString());
+                if (mModel.getPosition() == 0 && !mModel.getTotalAmount().equals(
+                        sBigDecimalValue)){
 
-                    mModel.setTotalAmount(Float.valueOf(s.toString()));
+                    ///If amount is round don't add the .0 value
+                    mModel.setTotalAmount(sBigDecimalValue);
                     //Subscribe text to the viewmodel of an activity
-                    RxDataPass.getOnTextChangedSubject().onNext(String.valueOf(s));
+                    rxDataPass.getOnTextChangedSubject().onNext(sBigDecimalValue);
                 }
 
             }
@@ -135,7 +154,20 @@ public class CurrencyItemViewmodel extends ViewModel {
         //only the first editText in item list can change all list values
         if (position == 0) {
             editText.addTextChangedListener(textWatcher);
+            editText.requestFocus();
+        }else {
+            editText.setEnabled(false);
         }
+    }
+
+    //DI
+    private ViewmodelComponent getmViewmodelComponent() {
+        if (mViewmodelComponent == null) {
+            mViewmodelComponent = DaggerViewmodelComponent.builder()
+                    .applicationComponent(App.get(App.getInstance()).getComponent())
+                    .build();
+        }
+        return mViewmodelComponent;
     }
 
     public Rate getModel() {

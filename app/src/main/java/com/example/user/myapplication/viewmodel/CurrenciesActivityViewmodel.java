@@ -11,27 +11,30 @@ import com.example.user.myapplication.adapter.RecycleViewAdapter;
 import com.example.user.myapplication.injection.DataApi;
 import com.example.user.myapplication.injection.component.DaggerViewmodelComponent;
 import com.example.user.myapplication.injection.component.ViewmodelComponent;
-import com.example.user.myapplication.rx.RxDataPass;
+import com.example.user.myapplication.injection.RxDataPass;
 import com.google.gson.annotations.SerializedName;
 import java.lang.reflect.Field;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 import javax.inject.Inject;
 import androidx.lifecycle.LifecycleObserver;
 import androidx.lifecycle.ViewModel;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.disposables.CompositeDisposable;
 import io.reactivex.schedulers.Schedulers;
+import retrofit2.HttpException;
 
 
 public class CurrenciesActivityViewmodel extends ViewModel implements LifecycleObserver {
     private ViewmodelComponent mViewmodelComponent;
     private RecycleViewAdapter.RecycleAdapterListener mListener;
     //base value start with 1
-    private Float mBaseValue = 1f;
+    private BigDecimal mBaseValue = new BigDecimal(1);
     private final CompositeDisposable mDisposables = new CompositeDisposable();
+
     @Inject DataApi dataApi;
+    @Inject RxDataPass rxDataPass;
 
 
     private List<Rate> mRateList = new ArrayList<>();
@@ -46,37 +49,23 @@ public class CurrenciesActivityViewmodel extends ViewModel implements LifecycleO
 
     /**
      * viewmodel constructor.
-     *
-     * Inside the constructor we subscribe the OnItemClick to method :onListItemClicked
-     * And subscribe when User write in first EditText in list to method :updateListViewByUserInput
+     * Inject DI.
      * */
     @SuppressLint("CheckResult")
     public CurrenciesActivityViewmodel() {
         getmViewmodelComponent().inject(this);
-        RxDataPass.getListItemClickSubject().subscribe(this::onListItemClicked, throwable -> {
-            if (throwable != null && throwable.getMessage() != null) {
-                Log.w("error OnItemClick", throwable.getMessage());
-            }
-        });
-
-        RxDataPass.getOnTextChangedSubject().subscribe(this::updateListViewByUserInput, throwable -> {
-            if (throwable != null  && throwable.getMessage() != null) {
-                Log.w("error OnTextChanged", throwable.getMessage());
-            }
-        });
-
     }
 
     /**
      * Update the list view items when the user change value of first item view EditText
      * @param inputText The text from user input
      * */
-    private void updateListViewByUserInput(String inputText) {
+    private void updateListViewByUserInput(BigDecimal inputText) {
             Rate tempRate = mRateList.get(0);
-            tempRate.setTotalAmount(Float.valueOf(inputText));
+            tempRate.setTotalAmount(inputText);
+
             mBaseValue =
-                    tempRate.getTotalAmount() /
-                            tempRate.getValue();
+                    tempRate.getTotalAmount().divide(tempRate.getValue());
             for (int i = 1; i < mRateList.size(); i++) {
                 mRateList.get(i).totalAmount(mBaseValue);
             }
@@ -96,16 +85,39 @@ public class CurrenciesActivityViewmodel extends ViewModel implements LifecycleO
     }
 
     /**
+     * Inside the method we subscribe the OnItemClick to method :onListItemClicked
+     * And subscribe when User write in first EditText in list to method :updateListViewByUserInput
      * Lunch an API call.
      * Load data from api with observable and add him to disposables.
      * */
     @SuppressLint("CheckResult")
-    public void getCurrenciesFromApi(){
+    public void loadViewmodelDisposables(){
+
+
+        mDisposables.add(rxDataPass.getListItemClickSubject().subscribe(this::onListItemClicked, throwable -> {
+            if (throwable != null && throwable.getMessage() != null) {
+                Log.w("error OnItemClick", throwable.getMessage());
+            }
+        }));
+
+        mDisposables.add(rxDataPass.getOnTextChangedSubject().subscribe(this::updateListViewByUserInput, throwable -> {
+            if (throwable != null  && throwable.getMessage() != null) {
+                Log.w("error OnTextChanged", throwable.getMessage());
+            }
+        }));
+
+        //  get Currencies From Api
         mDisposables.add(dataApi.getAPIService()
                     .getCurrencies(dataApi.getQueriesForApi(Const.dataSetUrl.CURRENCY_BASE))
                         .subscribeOn(Schedulers.io())
-                        .repeatWhen(completed -> completed.delay(1, TimeUnit.SECONDS))
+//                        .repeatWhen(completed -> completed.delay(1, TimeUnit.SECONDS))
                         .observeOn(AndroidSchedulers.mainThread())
+                .doOnError(e -> {
+                            if (e instanceof HttpException) {
+                                Toast.makeText(App.getInstance().getApplicationContext(),  e.getMessage(), Toast.LENGTH_LONG).show();
+
+                            }
+                })
                         .subscribe(this::loadCurrenciesSuccess, this::loadCurrenciesFailed)
         );
     }
@@ -126,13 +138,15 @@ public class CurrenciesActivityViewmodel extends ViewModel implements LifecycleO
      * @param currency A class API Response
      * */
     private synchronized void loadCurrenciesSuccess(Currency currency) {
-
         //handle first item in list if its not the base currency
-        if (!mRateList.isEmpty() && currency.rates.getFloatVariableByName(mRateList.get(0).getName()) != 0f){
+        if (!mRateList.isEmpty() &&
+                currency.rates.getFloatVariableByName(mRateList.get(0).getName()) != 0f){
+
             mBaseValue =
-                    mRateList.get(0).getTotalAmount() /
-                            currency.rates.getFloatVariableByName(mRateList.get(0).getName());
+                    mRateList.get(0).getTotalAmount().divide(
+                            BigDecimal.valueOf(currency.rates.getFloatVariableByName(mRateList.get(0).getName())));
         }
+
         //handle base currency in list
         Rate baseRate = new Rate(Const.dataSetUrl.CURRENCY_BASE, mBaseValue);
         if (mRateList.contains(baseRate)) {
@@ -149,7 +163,8 @@ public class CurrenciesActivityViewmodel extends ViewModel implements LifecycleO
                 String name = field.getAnnotation(SerializedName.class).value();
                 if (!Const.dataSetUrl.CURRENCY_BASE.equals(name) &&
                              !mRateList.get(0).getName().equals(name)){
-                    Float value = field.getFloat(currency.rates);
+                    //Convert api float to BigDecimal
+                    BigDecimal value = new BigDecimal(field.getFloat(currency.rates));
                     Rate rate = new Rate(name, value);
                     if (mRateList.contains(rate)) {
                         mRateList.get(mRateList.indexOf(rate)).setValue(rate.getValue());
@@ -164,8 +179,9 @@ public class CurrenciesActivityViewmodel extends ViewModel implements LifecycleO
             }
         }
 
-        // TODO:: Remove this toast check before sending project
-        Toast.makeText(App.getInstance().getApplicationContext(), String.valueOf(currency.rates.aUD), Toast.LENGTH_LONG).show();
+        //  This below toast is for UI Debugging check before sending project
+//        Toast.makeText(App.getInstance().getApplicationContext(), String.valueOf(currency.rates.aUD), Toast.LENGTH_LONG).show();
+
         //Notify Listener
         mListener.notifyDataChange();
     }

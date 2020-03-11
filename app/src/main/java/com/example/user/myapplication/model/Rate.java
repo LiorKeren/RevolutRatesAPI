@@ -1,5 +1,7 @@
 package com.example.user.myapplication.model;
 
+import java.math.BigDecimal;
+
 import androidx.annotation.Nullable;
 
 /**
@@ -8,11 +10,11 @@ import androidx.annotation.Nullable;
 public class Rate {
 
     private String mName;
-    private Float mValue;
-    private Float mTotalAmount;
+    private BigDecimal mValue;
+    private BigDecimal mTotalAmount;
     private Integer mPosition;
 
-    public Rate(String name, Float value) {
+    public Rate(String name, BigDecimal value) {
         this.mName = name;
         this.mValue = value;
         this.mTotalAmount = value;
@@ -22,7 +24,7 @@ public class Rate {
         return mName;
     }
 
-    public Float getValue() {
+    public BigDecimal getValue() {
         return mValue;
     }
 
@@ -34,7 +36,7 @@ public class Rate {
         this.mName = name;
     }
 
-    public void setValue(Float value) {
+    public void setValue(BigDecimal value) {
         this.mValue = value;
     }
 
@@ -51,15 +53,19 @@ public class Rate {
         return mName.equals(((Rate) obj).getName());
     }
 
-    public Float getTotalAmount() {
+    public BigDecimal getTotalAmount() {
         return mTotalAmount;
     }
 
-    public void setTotalAmount(Float value) {
+    public void setTotalAmount(BigDecimal value) {
         mTotalAmount = value;
     }
 
-    public void totalAmount(Float baseValue) {
-        this.mTotalAmount = mValue * baseValue;
+    public void totalAmount(BigDecimal baseValue) {
+        if (baseValue.equals(BigDecimal.ZERO)){
+            this.mTotalAmount = baseValue;
+        }else {
+            this.mTotalAmount = mValue.multiply(baseValue);
+        }
     }
 }
