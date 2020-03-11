@@ -17,6 +17,8 @@ import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+
 import javax.inject.Inject;
 import androidx.lifecycle.LifecycleObserver;
 import androidx.lifecycle.ViewModel;
@@ -110,7 +112,7 @@ public class CurrenciesActivityViewmodel extends ViewModel implements LifecycleO
         mDisposables.add(dataApi.getAPIService()
                     .getCurrencies(dataApi.getQueriesForApi(Const.dataSetUrl.CURRENCY_BASE))
                         .subscribeOn(Schedulers.io())
-//                        .repeatWhen(completed -> completed.delay(1, TimeUnit.SECONDS))
+                        .repeatWhen(completed -> completed.delay(1, TimeUnit.SECONDS))
                         .observeOn(AndroidSchedulers.mainThread())
                 .doOnError(e -> {
                             if (e instanceof HttpException) {
